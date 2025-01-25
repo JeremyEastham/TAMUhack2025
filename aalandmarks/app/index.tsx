@@ -1,15 +1,13 @@
-import { Text, View } from "react-native";
+import React from "react";
+import { AuthProvider } from "./contexts/AuthContext";
+import AppNavigator from "./navigation/AppNavigator";
 
-export default function Index() {
+const App: React.FC = () => {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
-    </View>
+    <AuthProvider>
+      <AppNavigator />
+    </AuthProvider>
   );
-}
+};
+
+export default App;
