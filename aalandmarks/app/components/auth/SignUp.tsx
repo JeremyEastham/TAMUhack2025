@@ -4,11 +4,10 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as yup from 'yup';
-import { useAuth } from '@/app/contexts/AuthContext';
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../firebase/firebaseConfig";
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../firebase/firebaseConfig';
 
-const loginValidationSchema = yup.object().shape({
+const signupValidationSchema = yup.object().shape({
   email: yup
     .string()
     .email('Please enter a valid email')
@@ -17,40 +16,39 @@ const loginValidationSchema = yup.object().shape({
     .string()
     .min(6, ({ min }) => `Password must be at least ${min} characters`)
     .required('Password is required'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Passwords must match')
+    .required('Confirm Password is required'),
 });
 
-export default function Login() {
-  const { saveToken, saveUser } = useAuth(); // Assume these are for storing auth details in context
+export default function Signup() {
   const navigation = useNavigation();
 
-  const handleLogin = async (email: string, password: string) => {
-    console.log("attempt login ");
+  const handleSignup = async (email: string, password: string) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Save user details to context
-      const token = await user.getIdToken();
-      saveToken(token);
-      // saveUser({ uid: user.uid, email: user.email });
+      Alert.alert("Success", "Your account has been created!");
+      console.log("User signed up:", user);
 
-      Alert.alert("Success", "You are now logged in!");
-      console.log("User logged in:", user);
-      navigation.navigate("Home")
+      // Navigate to login or main app page after successful signup
+      navigation.navigate('Login');
     } catch (error: any) {
       console.error(error.message);
-      Alert.alert("Login Failed", error.message);
+      Alert.alert("Signup Failed", error.message);
     }
   };
 
   return (
     <View style={styles.container}>
       <Image source={require("../../../assets/images/AAlogo.png")} style={styles.logo} />
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Sign Up</Text>
       <Formik
-        validationSchema={loginValidationSchema}
-        initialValues={{ email: '', password: '' }}
-        onSubmit={(values) => handleLogin(values.email, values.password)}
+        validationSchema={signupValidationSchema}
+        initialValues={{ email: '', password: '', confirmPassword: '' }}
+        onSubmit={(values) => handleSignup(values.email, values.password)}
       >
         {({
           handleChange,
@@ -90,23 +88,30 @@ export default function Login() {
             {errors.password && touched.password && (
               <Text style={styles.errorText}>{errors.password}</Text>
             )}
-            <TouchableOpacity onPress={() => {console.log('hi0')}}>
-              <Text style={styles.forgotPassword}>Forgot Password?</Text>
-            </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Icon name="lock-closed-outline" size={25} style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                secureTextEntry
+                onChangeText={handleChange('confirmPassword')}
+                onBlur={handleBlur('confirmPassword')}
+                value={values.confirmPassword}
+              />
+            </View>
+            {errors.confirmPassword && touched.confirmPassword && (
+              <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+            )}
             <TouchableOpacity
               style={styles.button}
               onPress={() => handleSubmit()}
               disabled={!isValid}
             >
-              <Text style={styles.buttonText}>Login</Text>
+              <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => {
-              navigation.navigate('Signup');
-              console.log('hisss');
-
-            }}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
               <Text style={styles.signUp}>
-                Don't have an account? <Text style={styles.signUpLink}>Sign Up</Text>
+                Already have an account? <Text style={styles.signUpLink}>Login</Text>
               </Text>
             </TouchableOpacity>
           </>
@@ -152,11 +157,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: '100%',
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
-    color: '#000',
   },
   button: {
     width: '100%',

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, TextInput, Button } from "react-native";
-import { signUp } from "../../firebase/auth";
+import { signUp } from "../firebase/auth";
+import Signup from "../components/auth/SignUp";
 
 const SignupScreen: React.FC = () => {
   const [name, setName] = useState<string>("");
@@ -17,17 +18,7 @@ const SignupScreen: React.FC = () => {
   };
 
   return (
-    <View>
-      <TextInput placeholder="Name" value={name} onChangeText={setName} />
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} />
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <Button title="Sign Up" onPress={handleSignUp} />
-    </View>
+    <Signup></Signup>
   );
 };
 
