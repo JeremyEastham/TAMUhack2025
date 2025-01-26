@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -69,6 +70,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   Position _userPosition = Position(-96.33909152611203, 30.609);
   late Ticker _ticker;
   late ModelLayer modelLayer;
+  Duration lastFrame = Duration.zero;
+  double time = 0.0;
 
   @override
   void dispose() {
@@ -91,15 +94,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     });
   }
 
-  _move() {
+  _move(Duration deltaTime) {
     setState(() {
       //move the model and camera
+      time += deltaTime.inMilliseconds / 1000;
       _userPosition =
-          Position(_userPosition.lng + 0.00001, _userPosition.lat + 0.00001);
+          Position(_userPosition.lng + 0.00001 * deltaTime.inMilliseconds / 30, _userPosition.lat + 0.00001 * deltaTime.inMilliseconds / 30);
       mapboxMap!.setCamera(
-          CameraOptions(center: Point(coordinates: _userPosition), zoom: 16));
+          CameraOptions(center: Point(coordinates: _userPosition), zoom: 10));
       mapboxMap!.style.setStyleSourceProperty(
           "sourceId", "data", json.encode(Point(coordinates: _userPosition)));
+      modelLayer.modelRotation![1] = sin(time) * 15;
+      mapboxMap?.style.updateLayer(modelLayer);
     });
   }
 
@@ -124,10 +130,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     modelLayer.modelTranslation = [0, 0, 50];
     modelLayer.modelType = ModelType.COMMON_3D;
     modelLayer.modelScale = [5, 5, 5];
+    modelLayer.modelCastShadows = false;
     mapboxMap?.style.addLayer(modelLayer);
-    mapboxMap?.setCamera(CameraOptions(center: value, zoom: 16));
+    mapboxMap?.setCamera(CameraOptions(center: value, zoom: 10));
     _ticker = Ticker((Duration elapsed) {
-      _move();
+      Duration deltaTime = elapsed - lastFrame;
+      lastFrame = elapsed;
+      _move(deltaTime);
     });
     _ticker.start();
   }
