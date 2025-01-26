@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 void main() {
@@ -40,16 +41,17 @@ class _ModelLayerExampleState extends State<ModelLayerExample> {
   MapboxMap? mapboxMap;
   PointAnnotationManager? pointAnnotationManager;
 
-  var position = Position(24.9458, 60.17180);
-  var modelPosition = Position(24.94457012371287, 60.171958417023674);
+  var position = Position(-96.34266987969741, 30.613339432347736); // Position(24.9458, 60.17180);
+  var modelPosition = Position(-96.34266987969741, 30.613339432347736); // Position(24.94457012371287, 60.171958417023674);
 
   @override
   Widget build(BuildContext context) {
     return MapWidget(
+        styleUri: MapboxStyles.OUTDOORS,
         cameraOptions: CameraOptions(
-            center: Point(coordinates: modelPosition),
-            zoom: 18,
-            bearing: 0,
+            center: Point(coordinates: position),
+            zoom: 18.5,
+            bearing: 90,
             pitch: 80),
         key: const ValueKey<String>('mapWidget'),
         onMapCreated: _onMapCreated,
@@ -69,15 +71,55 @@ class _ModelLayerExampleState extends State<ModelLayerExample> {
     final Uint8List imageData = bytes.buffer.asUint8List();
 
     // Create a PointAnnotationOptions
-    PointAnnotationOptions pointAnnotationOptions = PointAnnotationOptions(
-      geometry: Point(coordinates: modelPosition),
-      image: imageData,
-      iconSize: 1.0
-    );
+    // PointAnnotationOptions pointAnnotationOptions = PointAnnotationOptions(
+    //   geometry: Point(coordinates: modelPosition),
+    //   image: imageData,
+    //   iconSize: 0.25,
+    // );
 
     // Add the annotation to the map
     // pointAnnotationManager?.create(pointAnnotationOptions);
+    // Add more points in a grid pattern
+    // for (var i = -3; i <= 3; i++) {
+    //   for (var j = -3; j <= 3; j++) {
+    //     var offset = Position(
+    //       modelPosition.lng + (i * 0.0001), 
+    //       modelPosition.lat + (j * 0.0001)
+    //     );
+    //     pointAnnotationManager?.create(
+    //       PointAnnotationOptions(
+    //         geometry: Point(coordinates: offset),
+    //         image: imageData,
+    //         iconSize: 0.25,
+    //       )
+    //     );
+    //   }
+    // }
+    // Query nearby points of interest from Mapbox Tilequery API
+    final response = await http.get(Uri.parse(
+      'https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2/tilequery/'
+      '${modelPosition.lng},${modelPosition.lat}.json'
+      '?access_token=${await MapboxOptions.getAccessToken()}'
+      '&radius=1000000'
+      '&limit=50'
+      '&geometry=point'
+    ));
 
+    print(response.statusCode);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      for (var feature in data['features']) {
+        final coordinates = feature['geometry']['coordinates'];
+        pointAnnotationManager?.create(
+          PointAnnotationOptions(
+          geometry: Point(coordinates: Position(coordinates[0], coordinates[1])),
+          image: imageData,
+          iconSize: 0.25,
+          textField: feature['properties']['type']
+          )
+        );
+      }
+    }
     addModelLayer();
   }
 
@@ -88,7 +130,7 @@ class _ModelLayerExampleState extends State<ModelLayerExample> {
     }
 
     final airplaneModelId = "model-airplane-id";
-    final airplaneModelUri = "asset://assets/airplane.glb";
+    final airplaneModelUri = "asset://assets/low_poly_plane.gltf";
     await mapboxMap?.style.addStyleModel(airplaneModelId, airplaneModelUri);
 
     await mapboxMap?.style
@@ -99,6 +141,6 @@ class _ModelLayerExampleState extends State<ModelLayerExample> {
     modelLayer.modelScale = [1.0, 1.0, 1.0];
     modelLayer.modelRotation = [0, 0, 90];
     modelLayer.modelType = ModelType.COMMON_3D;
-    mapboxMap?.style.addLayer(modelLayer);
+    await mapboxMap?.style.addLayer(modelLayer);
   }
 }

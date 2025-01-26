@@ -1,0 +1,9 @@
+import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+void main() {
+  final controller = WebViewController()
+    ..setJavaScriptMode(JavaScriptMode.unrestricted)
+    ..loadFlutterAsset('assets/index.html');
+  runApp(MaterialApp(home: WebViewWidget(controller: controller,)));
+}
