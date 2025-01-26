@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'package:aalandmarks/database/firestore.dart';
 import 'package:aalandmarks/helper/helper_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
