@@ -319,3 +319,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+aalandmarks/android/app/google-services.json
+aalandmarks/firebase.json
+aalandmarks/ios/Runner/GoogleService-Info.plist
+aalandmarks/lib/firebase_options.dart
