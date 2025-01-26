@@ -9,9 +9,12 @@ import 'package:aalandmarks/theme/dark_mode.dart';
 import 'package:aalandmarks/theme/light_mode.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+   MapboxOptions.setAccessToken(
+      'sk.eyJ1IjoicmFhZmF5NTkiLCJhIjoiY202Y3JzbnVwMG54ODJ3cHNkdjR6Znd3bSJ9.aTq44U2zhOXaX37txUxbTQ');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }

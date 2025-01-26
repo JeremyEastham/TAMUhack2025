@@ -1,6 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:aalandmarks/database/firestore.dart';
+import 'package:aalandmarks/helper/helper_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:flutter/scheduler.dart';
@@ -9,8 +13,16 @@ import 'package:flutter/services.dart';
 class OnAnnotationClick extends OnPointAnnotationClickListener {
   PointAnnotationManager? pointAnnotationManager;
   OnAnnotationClick(this.pointAnnotationManager);
+  final FirestoreDatabase database = FirestoreDatabase();
+
   @override
   void onPointAnnotationClick(PointAnnotation annotation) {
+    try {
+      database.claimReward(getSubstringBeforeFirstDash(annotation.id));
+    } catch (e, stacktrace) {
+      print('failed to delete annotation ${annotation.id} from database');
+    }
+
     pointAnnotationManager?.delete(annotation);
   }
 }
@@ -36,6 +48,7 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   MapboxMap? mapboxMap;
   Position _userPosition = Position(-96.33909152611203, 30.609);
+  final FirestoreDatabase database = FirestoreDatabase();
   late Ticker _ticker;
   late ModelLayer modelLayer;
   late PointAnnotationManager pointAnnotationManager;
@@ -47,8 +60,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  void logout() {
+    FirebaseAuth.instance.signOut();
+  }
+
   _onMapCreated(MapboxMap mapboxMap) async {
+    //setting up the map
     this.mapboxMap = mapboxMap;
+
+    /// DEMO ONLY -- REMOVE IN PRODUCTION
+    mapboxMap.logo.updateSettings(LogoSettings(enabled: false));
+    mapboxMap.attribution.updateSettings(AttributionSettings(enabled: false));
+    /// DEMO ONLY -- REMOVE IN PRODUCTION
+
+
     mapboxMap.setBounds(CameraBoundsOptions(
       maxZoom: 17,
       minZoom: 16,
@@ -58,6 +83,38 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         await mapboxMap.annotations.createPointAnnotationManager();
     onAnnotationClick = OnAnnotationClick(pointAnnotationManager);
     pointAnnotationManager.addOnPointAnnotationClickListener(onAnnotationClick);
+
+    // populate database annotations on the map
+    final ByteData bytes =
+        await rootBundle.load('assets/american-airlines.png');
+    final Uint8List imageData = bytes.buffer.asUint8List();
+
+    try {
+      //get the coins from db
+      final CollectionReference coins =
+          FirebaseFirestore.instance.collection('coins');
+      QuerySnapshot querySnapshot = await coins.get();
+
+      // get the latitude and longitude from each annoatation
+      for (var doc in querySnapshot.docs) {
+        double latitude = doc.get('latitude');
+        double longitude = doc.get('longitude');
+        print('Latitude: $latitude, Longitude: $longitude');
+        PointAnnotationOptions pao = PointAnnotationOptions(
+          geometry: Point(
+            coordinates: Position(longitude,
+                latitude), //make a point with the latitude and longitude
+          ),
+          image: imageData,
+          iconSize: 0.2,
+        );
+
+        await pointAnnotationManager.create(pao); // put the point on the map
+      }
+    } catch (e, stacktrace) {
+      print(
+          'something went wrong retrieving coins locations from database $stacktrace');
+    }
   }
 
   _setZoom(double zoom) {
@@ -121,8 +178,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       image: imageData,
       iconSize: 0.2,
     );
-    PointAnnotation pa = await pointAnnotationManager.create(pao);
-    pa.id = "Jeremy";
+
+    try {
+      PointAnnotation pa =
+          await pointAnnotationManager.create(pao); // put annotation on the map
+
+      //create annoation in database
+      String coinId = await database.spawnReward(
+          pa.id,
+          '',
+          context.point.coordinates.lat as double,
+          context.point.coordinates.lng as double);
+
+      print('successfully created annotation');
+    } catch (e, stacktrace) {
+      print('something went wrong creating annotation in database $stacktrace');
+    }
+
     print("Long tapped on the map at ${context.point.coordinates.lat}, "
         "${context.point.coordinates.lng}");
   }
@@ -131,7 +203,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text("Home Page"),
+        backgroundColor: Colors.deepOrangeAccent,
+        actions: [
+          IconButton(
+            onPressed: logout,
+            icon: Icon(Icons.logout),
+          ),
+        ],
       ),
       body: MapWidget(
         onTapListener: (context) {

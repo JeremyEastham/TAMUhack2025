@@ -15,7 +15,7 @@ class HomePage extends StatelessWidget {
   }
 
   void postReward() async {
-    coinId = await database.spawnReward("Hi");
+    coinId = await database.spawnReward('1234', "Hi", 0, 0);
   }
 
   void claimReward() {

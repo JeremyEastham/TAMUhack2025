@@ -11,28 +11,34 @@ class FirestoreDatabase {
   final CollectionReference coins =
       FirebaseFirestore.instance.collection('coins');
 
-  Future<String> spawnReward(String message) async {
+  Future<String> spawnReward(String id, String? message, double latitude, double longitude) async {
     try {
-      DocumentReference coinRef = await coins.add({
+      await FirebaseFirestore.instance.collection('coins').doc(getSubstringBeforeFirstDash(id)).set({
         'user-email': user!.email,
-        'msg': message,
+        'msg': '',
         'value': getRandomInt(minRewardvalue, maxRewardValue),
         'timestamp': Timestamp.now(),
-        'latitude': 0,
-        'longitude': 0,
+        'latitude': latitude,
+        'longitude': longitude,
       });
-
-      String coinId = coinRef.id;
+      // DocumentReference coinRef = await coins.add({
+      //   'user-email': user!.email,
+      //   'msg': '',
+      //   'value': getRandomInt(minRewardvalue, maxRewardValue),
+      //   'timestamp': Timestamp.now(),
+      //   'latitude': latitude,
+      //   'longitude': longitude,
+      // });
 
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user!.email)
           .update({
-        'ownedPosts': FieldValue.arrayUnion([coinId]),
+        'ownedPosts': FieldValue.arrayUnion([id]),
       });
 
-      print('successfully spawned reward $coinId');
-      return coinId;
+      print('successfully spawned reward $id');
+      return id;
     } catch (e, stacktrace) {
       print('something went wrong spawning reward ${stacktrace}');
       return 'invalid';
@@ -74,9 +80,26 @@ class FirestoreDatabase {
   Stream<QuerySnapshot> getCoinsStream() {
     final coinsStream = FirebaseFirestore.instance
         .collection('coins')
-        .orderBy('timestamp', descending: true)
+        // .orderBy('timestamp', descending: true)
         .snapshots();
 
     return coinsStream;
   }
+
+
+  Future<void> printAllCoinsLocation() async {
+    try {
+        final CollectionReference coins =
+      FirebaseFirestore.instance.collection('coins');
+      QuerySnapshot querySnapshot = await coins.get();
+      for (var doc in querySnapshot.docs) {
+        double latitude = doc.get('latitude');
+        double longitude = doc.get('longitude');
+        print('Latitude: $latitude, Longitude: $longitude');
+      }
+    } catch (e, stacktrace) {
+      print('something went wrong retrieving coins locations $stacktrace');
+    }
+  }
+
 }
