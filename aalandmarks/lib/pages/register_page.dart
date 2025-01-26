@@ -74,81 +74,86 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+        resizeToAvoidBottomInset: false,
         backgroundColor: Theme.of(context).colorScheme.background,
         body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(25.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.person,
-                  size: 80,
-                  color: Theme.of(context).colorScheme.inversePrimary,
-                ),
-                const SizedBox(height: 25),
-                Text(
-                  "AA LANDMARKS",
-                  style: TextStyle(fontSize: 20),
-                ),
-                const SizedBox(height: 50),
-                CustomTextField(
-                    hintText: "Username",
-                    obscureText: false,
-                    controller: usernameController),
-                const SizedBox(height: 10),
-                CustomTextField(
-                    hintText: "Email",
-                    obscureText: false,
-                    controller: emailController),
-                const SizedBox(height: 10),
-                CustomTextField(
-                    hintText: "Password",
-                    obscureText: true,
-                    controller: passController),
-                const SizedBox(height: 10),
-                CustomTextField(
-                    hintText: "Confirm Password",
-                    obscureText: true,
-                    controller: confirmPassController),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      "Forgot Password?",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
-                    )
-                  ],
-                ),
-                const SizedBox(height: 25),
-                CustomButton(
-                  text: "Register",
-                  onTap: register,
-                ),
-                const SizedBox(height: 25),
-                Row(
+          child: SingleChildScrollView(
+            physics: ScrollPhysics(parent: BouncingScrollPhysics()),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(25.0),
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Already have an account?",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
+                    Icon(
+                      Icons.person,
+                      size: 80,
+                      color: Theme.of(context).colorScheme.inversePrimary,
                     ),
-                    GestureDetector(
-                      onTap: widget.onTap,
-                      child: Text(
-                        " Login Here",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                    const SizedBox(height: 25),
+                    Text(
+                      "AA LANDMARKS",
+                      style: TextStyle(fontSize: 20),
+                    ),
+                    const SizedBox(height: 50),
+                    CustomTextField(
+                        hintText: "Username",
+                        obscureText: false,
+                        controller: usernameController),
+                    const SizedBox(height: 10),
+                    CustomTextField(
+                        hintText: "Email",
+                        obscureText: false,
+                        controller: emailController),
+                    const SizedBox(height: 10),
+                    CustomTextField(
+                        hintText: "Password",
+                        obscureText: true,
+                        controller: passController),
+                    const SizedBox(height: 10),
+                    CustomTextField(
+                        hintText: "Confirm Password",
+                        obscureText: true,
+                        controller: confirmPassController),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          "Forgot Password?",
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                          ),
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 25),
+                    CustomButton(
+                      text: "Register",
+                      onTap: register,
+                    ),
+                    const SizedBox(height: 25),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Already have an account?",
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: widget.onTap,
+                          child: Text(
+                            " Login Here",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ));
