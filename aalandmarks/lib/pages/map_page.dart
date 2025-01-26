@@ -2,12 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-<<<<<<< Updated upstream
 import 'package:aalandmarks/database/firestore.dart';
 import 'package:aalandmarks/helper/helper_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-=======
->>>>>>> Stashed changes
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -196,7 +193,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     FirebaseAuth.instance.signOut();
   }
 
-<<<<<<< Updated upstream
   void startLoading() {
     setState(() {
       decreaseRewards();
@@ -286,8 +282,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return pa.id;
   }
 
-=======
->>>>>>> Stashed changes
   _onMapCreated(MapboxMap mapboxMap) async {
     showDialog(
       context: this.context,
@@ -466,7 +460,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-<<<<<<< Updated upstream
         leading: Stack(
           children: [
             Invisibility(
@@ -525,17 +518,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ),
         ],
       ),
-=======
-          title: Text("Home Page"),
-          backgroundColor: Colors.deepOrangeAccent,
-          actions: [
-            IconButton(
-              onPressed: logout,
-              icon: Icon(Icons.logout),
-            ),
-          ],
-        ),
->>>>>>> Stashed changes
       body: MapWidget(
         // onTapListener: (context) {
         //   _onTap(context);
