@@ -258,17 +258,35 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         } else if (change.type == DocumentChangeType.modified) {
           print('Document modified. No action needed');
         } else if (change.type == DocumentChangeType.removed) {
-          print('Document remove only detected so far');
-          if (annotationsMap[documentId] != null) {
-            // the annoation is on the map (as stored in our local map of them)
-            pointAnnotationManager.delete(annotationsMap[documentId]!);
-            annotationsMap.remove(documentId);
-            // database.idConnectionsMap.remove(documentId);
-            print('Document remove successfully handled');
-          }
+          pointAnnotationManager.deleteAll();
+          test();
+          // print('Document remove only detected so far');
+          // if (annotationsMap[documentId] != null) {
+          //   // the annoation is on the map (as stored in our local map of them)
+          //   pointAnnotationManager.delete(annotationsMap[documentId]!);
+          //   annotationsMap.remove(documentId);
+          //   // database.idConnectionsMap.remove(documentId);
+          //   print('Document remove successfully handled');
+          // }
         }
       }
     });
+  }
+
+  Future<void> test() async {
+    //get the coins from db
+    final CollectionReference coins =
+        FirebaseFirestore.instance.collection('coins');
+    QuerySnapshot querySnapshot = await coins.get();
+
+    // get the latitude and longitude from each annoatation
+    for (var doc in querySnapshot.docs) {
+      double latitude = doc.get('latitude');
+      double longitude = doc.get('longitude');
+      print('Latitude: $latitude, Longitude: $longitude');
+
+      await createAnnotationOnMap(longitude, latitude, existingId: doc.id);
+    }
   }
 
   // end listener to annotation updates in db
