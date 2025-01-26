@@ -515,8 +515,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 "$_remainingRewards/3",
                 style: TextStyle(
                   color: Theme.of(context) == ThemeData.dark()
-                      ? (Colors.grey[300] ?? Colors.white)
-                      : (Colors.grey[800] ?? Colors.black),
+                      ? (Colors.red[500] ?? Colors.white)
+                      : (Colors.black ?? Colors.white),
                   fontSize: 20,
                 ),
               )),

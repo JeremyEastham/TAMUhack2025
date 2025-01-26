@@ -83,6 +83,11 @@ class FirestoreDatabase {
 
       if (coinSnapshot.exists) {
         int value = coinSnapshot.get('value');
+        String coinUser = coinSnapshot.get('user-email');
+        if (user == user!.email) {
+          print('tried to claim own token');
+          return;
+        }
 
         DocumentReference userDoc =
             firestore.collection('users').doc(user!.email);
@@ -108,8 +113,35 @@ class FirestoreDatabase {
     return user!.email ?? '';
   }
 
+  Future<String> getCoinEmail(String coinId) async {
+    final firestore = FirebaseFirestore.instance;
+    DocumentReference coinDoc =
+        firestore.collection('coins').doc(coinId); // get reward
+
+    DocumentSnapshot coinSnapshot = await coinDoc.get();
+
+    if (coinSnapshot.exists) {
+      int value = coinSnapshot.get('value');
+      String coinUser = coinSnapshot.get('user-email');
+      return coinUser;
+    }
+    return '';
+  }
+
   Future<int> getAppUserPts() async {
-    return Random().nextInt(9999);
+    final result = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user!.email)
+        .get();
+    int points = 0;
+    result.data();
+    if (result.exists) {
+      points = result.get('rewards');
+    } else {
+      print('User document does not exist.');
+    }
+
+    return points;
   }
 
   Stream<QuerySnapshot> getCoinsStream() {
