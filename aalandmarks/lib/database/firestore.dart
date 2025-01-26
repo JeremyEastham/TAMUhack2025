@@ -101,6 +101,11 @@ class FirestoreDatabase {
     }
   }
 
+  String getAppUserEmail() {
+    return user!.email ?? '';
+
+  }
+
   Stream<QuerySnapshot> getCoinsStream() {
     final coinsStream = FirebaseFirestore.instance
         .collection('coins')
