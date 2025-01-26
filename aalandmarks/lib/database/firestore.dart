@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:aalandmarks/helper/helper_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -103,7 +105,10 @@ class FirestoreDatabase {
 
   String getAppUserEmail() {
     return user!.email ?? '';
+  }
 
+  Future<int> getAppUserPts() async {
+    return Random().nextInt(9999);
   }
 
   Stream<QuerySnapshot> getCoinsStream() {

@@ -14,9 +14,11 @@ import 'package:quickalert/quickalert.dart';
 import 'package:aalandmarks/components/invisibility.dart';
 
 class OnAnnotationClick extends OnPointAnnotationClickListener {
+  VoidCallback updatePoints;
   PointAnnotationManager? pointAnnotationManager;
   BuildContext context;
-  OnAnnotationClick(this.pointAnnotationManager, {required this.context});
+  OnAnnotationClick(this.pointAnnotationManager,
+      {required this.updatePoints, required this.context});
   final FirestoreDatabase database = FirestoreDatabase();
 
   @override
@@ -34,6 +36,7 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
         confirmBtnText: "Claim",
         onConfirmBtnTap: () {
           database.claimReward(getSubstringBeforeFirstDash(annotation.id));
+          updatePoints();
           Navigator.pop(context);
         },
       );
@@ -129,23 +132,49 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   double secondsRemaining = 0;
   late AnimationController _controller;
   late Animation<double> _animation;
+  int _remainingRewards = 3;
+  double cooldownTime = 5;
+  late int userPoints;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+    getPoints();
     _controller = AnimationController(
-      duration: const Duration(seconds: 30),
+      duration: Duration(seconds: cooldownTime.toInt()),
       vsync: this,
     )..forward();
 
-    _animation = Tween(begin: 0.0, end: 30.0)
+    _animation = Tween(begin: cooldownTime, end: 0.0)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    });
+  }
+
+  void decreaseRewards() {
+    setState(() {
+      _remainingRewards--;
+    });
+  }
+
+  void getPoints() {
+    database.getAppUserPts().then((value) {
+      setState(() {
+        userPoints = value;
+      });
+    });
   }
 
   void animateGauge() {
     _controller.reset();
-    _animation = Tween(begin: 0.0, end: 30.0)
+    _animation = Tween(begin: cooldownTime, end: 0.0)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
     _controller.forward();
   }
@@ -166,8 +195,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   void startLoading() {
     setState(() {
+      decreaseRewards();
       isLoading = true;
-      secondsRemaining = 30;
+      secondsRemaining = cooldownTime;
+      animateGauge();
     });
   }
 
@@ -275,8 +306,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     mapboxMap.gestures.updateSettings(GesturesSettings(scrollEnabled: false));
     pointAnnotationManager =
         await mapboxMap.annotations.createPointAnnotationManager();
-    onAnnotationClick =
-        OnAnnotationClick(pointAnnotationManager, context: context);
+    onAnnotationClick = OnAnnotationClick(pointAnnotationManager,
+        updatePoints: getPoints, context: context);
     pointAnnotationManager.addOnPointAnnotationClickListener(onAnnotationClick);
 
     // populate database annotations on the map
@@ -363,6 +394,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // }
 
   _onLongTap(MapContentGestureContext mapContext, BuildContext context) async {
+    if (isLoading || _remainingRewards == 0) {
+      return;
+    }
     final ByteData bytes =
         await rootBundle.load('assets/american-airlines.png');
     final Uint8List imageData = bytes.buffer.asUint8List();
@@ -426,8 +460,57 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Home Page"),
-        backgroundColor: Colors.deepOrangeAccent,
+        leading: Stack(
+          children: [
+            Invisibility(
+              visible: isLoading,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(50),
+                  color: Theme.of(context).colorScheme.background,
+                ),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: CircularProgressIndicator(
+                        value: _animation.value / cooldownTime,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.grey[800] ?? Colors.black),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        _animation.value.toInt().toString(),
+                        style: TextStyle(
+                          color: Theme.of(context) == ThemeData.dark()
+                              ? (Colors.grey[300] ?? Colors.white)
+                              : (Colors.grey[800] ?? Colors.black),
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Invisibility(
+              visible: !isLoading,
+              child: Center(
+                  child: Text(
+                "$_remainingRewards/3",
+                style: TextStyle(
+                  color: Theme.of(context) == ThemeData.dark()
+                      ? (Colors.grey[300] ?? Colors.white)
+                      : (Colors.grey[800] ?? Colors.black),
+                  fontSize: 20,
+                ),
+              )),
+            )
+          ],
+        ),
+        title: Text("Your Points: $userPoints"),
+        backgroundColor: Theme.of(context).colorScheme.background,
         actions: [
           IconButton(
             onPressed: logout,
