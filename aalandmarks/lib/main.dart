@@ -3,6 +3,7 @@ import 'package:aalandmarks/auth/login_or_register.dart';
 import 'package:aalandmarks/firebase_options.dart';
 import 'package:aalandmarks/pages/home_page.dart';
 import 'package:aalandmarks/pages/login_page.dart';
+import 'package:aalandmarks/pages/map_page.dart';
 import 'package:aalandmarks/pages/register_page.dart';
 import 'package:aalandmarks/theme/dark_mode.dart';
 import 'package:aalandmarks/theme/light_mode.dart';
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
       routes: {
         'login_or_register_page': (context) => const LoginOrRegister(),
         'home_page': (context) => HomePage(),
+        'map_page': (context) => MapPage(title: "RAAFAY'S THE GOAT"),
       },
     );
   }
