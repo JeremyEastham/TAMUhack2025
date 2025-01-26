@@ -10,20 +10,40 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:quickalert/quickalert.dart';
+import 'package:aalandmarks/components/invisibility.dart';
 
 class OnAnnotationClick extends OnPointAnnotationClickListener {
+  VoidCallback updatePoints;
   PointAnnotationManager? pointAnnotationManager;
-  OnAnnotationClick(this.pointAnnotationManager);
+  BuildContext context;
+  OnAnnotationClick(this.pointAnnotationManager,
+      {required this.updatePoints, required this.context});
   final FirestoreDatabase database = FirestoreDatabase();
 
   @override
-  void onPointAnnotationClick(PointAnnotation annotation) {
+  void onPointAnnotationClick(PointAnnotation annotation) async {
     try {
+      String message = await database.getMessage(annotation.id);
+      QuickAlert.show(
+        context: context,
+        type: QuickAlertType.success,
+        title: "You got a reward!",
+        text: message == '' ? 'No message' : '"$message"',
+        textColor: Theme.of(context) == ThemeData.dark()
+            ? (Colors.grey[300] ?? Colors.white)
+            : (Colors.grey[800] ?? Colors.black),
+        confirmBtnText: "Claim",
+        onConfirmBtnTap: () {
       print('claim 1: ${getSubstringBeforeFirstDash(annotation.id)}');
       print('claim 2: ${FirestoreDatabase.idConnectionsMap[annotation.id]}');
       database.claimReward(getSubstringBeforeFirstDash(annotation.id));
       database.claimReward(FirestoreDatabase.idConnectionsMap[annotation.id]!);
       FirestoreDatabase.idConnectionsMap.remove(annotation.id);
+          updatePoints();
+          Navigator.pop(context);
+        },
+      );
     } catch (e, stacktrace) {
       print('failed to delete annotation ${annotation.id} from database');
     }
@@ -37,6 +57,59 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
     
   }
 }
+
+// class Timer extends StatefulWidget {
+//   const Timer({super.key, required this.width});
+//   final double width;
+
+//   @override
+//   State<Timer> createState() => _TimerState();
+// }
+
+// class _TimerState extends State<Timer> with SingleTickerProviderStateMixin {
+//   late AnimationController _controller;
+//   late Animation<double> _animation;
+//   final double _cooldown = 0.0;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _controller = AnimationController(
+//       duration: const Duration(seconds: 1),
+//       vsync: this,
+//     )..forward();
+
+//     _animation = Tween(begin: 0.0, end: _cooldown)
+//         .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+//   }
+
+//   @override
+//   void dispose() {
+//     super.dispose();
+//   }
+
+//   void animateTimer() {
+//     _controller.reset();
+//     _animation = Tween(begin: 0.0, end: _cooldown)
+//         .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+//     _controller.forward();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return AnimatedBuilder(animation: _controller, builder: (context, _){
+//       return SizedBox(
+//         width: widget.width,
+//         height: widget.width,
+//         child: LinearProgressIndicator(
+//           value: _animation.value,
+//           backgroundColor: Colors.grey[300],
+//           valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[800] ?? Colors.black),
+//         ),
+//       )
+//     });
+//   }
+// }
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key, required this.title});
@@ -65,6 +138,56 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   late ModelLayer modelLayer;
   late PointAnnotationManager pointAnnotationManager;
   late OnAnnotationClick onAnnotationClick;
+  bool isLoading = false;
+  double secondsRemaining = 0;
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  int _remainingRewards = 3;
+  double cooldownTime = 5;
+  late int userPoints;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    getPoints();
+    _controller = AnimationController(
+      duration: Duration(seconds: cooldownTime.toInt()),
+      vsync: this,
+    )..forward();
+
+    _animation = Tween(begin: cooldownTime, end: 0.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    });
+  }
+
+  void decreaseRewards() {
+    setState(() {
+      _remainingRewards--;
+    });
+  }
+
+  void getPoints() {
+    database.getAppUserPts().then((value) {
+      setState(() {
+        userPoints = value;
+      });
+    });
+  }
+
+  void animateGauge() {
+    _controller.reset();
+    _animation = Tween(begin: cooldownTime, end: 0.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+    _controller.forward();
+  }
 
   final Map<String, PointAnnotation> annotationsMap = {};
 
@@ -72,11 +195,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void dispose() {
     stopUpdateListener();
     _ticker.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   void logout() {
     FirebaseAuth.instance.signOut();
+  }
+
+  void startLoading() {
+    setState(() {
+      decreaseRewards();
+      isLoading = true;
+      secondsRemaining = cooldownTime;
+      animateGauge();
+    });
   }
 
   // listen to annotation updates real-time in the db
@@ -163,13 +296,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   _onMapCreated(MapboxMap mapboxMap) async {
     showDialog(
-      context: context,
+      context: this.context,
       builder: (context) => const Center(
         child: CircularProgressIndicator(),
       ),
     );
     //setting up the map
     this.mapboxMap = mapboxMap;
+    mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
 
     /// DEMO ONLY -- REMOVE IN PRODUCTION
     mapboxMap.logo.updateSettings(LogoSettings(enabled: false));
@@ -184,7 +318,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     mapboxMap.gestures.updateSettings(GesturesSettings(scrollEnabled: false));
     pointAnnotationManager =
         await mapboxMap.annotations.createPointAnnotationManager();
-    onAnnotationClick = OnAnnotationClick(pointAnnotationManager);
+    onAnnotationClick = OnAnnotationClick(pointAnnotationManager,
+        updatePoints: getPoints, context: context);
     pointAnnotationManager.addOnPointAnnotationClickListener(onAnnotationClick);
 
     // populate database annotations on the map
@@ -270,31 +405,124 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   //       "${context.point.coordinates.lng}");
   // }
 
-  _onLongTap(MapContentGestureContext context) async {
-    try {
-      double latitude = context.point.coordinates.lat as double;
-      double longitude = context.point.coordinates.lng as double;
-      String pointId = await createAnnotationOnMap(longitude, latitude);
-
-      //create annoation in database
-      String coinId =
-          await database.spawnReward(pointId, '', latitude, longitude);
-
-      print('successfully created annotation');
-    } catch (e, stacktrace) {
-      print('something went wrong creating annotation in database $stacktrace');
+  _onLongTap(MapContentGestureContext mapContext, BuildContext context) async {
+    if (isLoading || _remainingRewards == 0) {
+      return;
     }
+    final ByteData bytes =
+        await rootBundle.load('assets/american-airlines.png');
+    final Uint8List imageData = bytes.buffer.asUint8List();
+    PointAnnotationOptions pao = PointAnnotationOptions(
+      geometry: mapContext.point,
+      image: imageData,
+      iconSize: 0.2,
+    );
+    String? message;
+    QuickAlert.show(
+      context: context,
+      showCancelBtn: true,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      width: MediaQuery.of(context).size.width * 0.5,
+      type: QuickAlertType.custom,
+      barrierDismissible: false,
+      confirmBtnText: "Post",
+      cancelBtnText: "Cancel",
+      widget: TextFormField(
+        decoration: InputDecoration(
+            hintText: "Enter optional message",
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            fillColor: Color.fromARGB(255, 166, 166, 166),
+            prefixIcon: Icon(Icons.edit)),
+        autocorrect: true,
+        onChanged: (value) => message = value,
+      ),
+      title: "Add a message to your reward",
+      onConfirmBtnTap: () async {
+        Navigator.pop(context);
+        try {
+          print('i got here bro');
+          PointAnnotation pa = await pointAnnotationManager
+              .create(pao); // put annotation on the map
+          print("Message is $message");
+          //create annoation in database
+          String coinId = await database.spawnReward(
+              pa.id,
+              message,
+              mapContext.point.coordinates.lat as double,
+              mapContext.point.coordinates.lng as double);
 
-    print("ADDED ANNOTATION on the map at ${context.point.coordinates.lat}, "
-        "${context.point.coordinates.lng}");
+          print('successfully created annotation');
+        } catch (e, stacktrace) {
+          print(
+              'something went wrong creating annotation in database $stacktrace');
+        }
+        startLoading();
+      },
+      onCancelBtnTap: () {
+        Navigator.pop(context);
+        return;
+      },
+    );
+
+    print("ADDED ANNOTATION on the map at ${mapContext.point.coordinates.lat}, "
+        "${mapContext.point.coordinates.lng}");
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Home Page"),
-        backgroundColor: Colors.deepOrangeAccent,
+        leading: Stack(
+          children: [
+            Invisibility(
+              visible: isLoading,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(50),
+                  color: Theme.of(context).colorScheme.background,
+                ),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: CircularProgressIndicator(
+                        value: _animation.value / cooldownTime,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.grey[800] ?? Colors.black),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        _animation.value.toInt().toString(),
+                        style: TextStyle(
+                          color: Theme.of(context) == ThemeData.dark()
+                              ? (Colors.grey[300] ?? Colors.white)
+                              : (Colors.grey[800] ?? Colors.black),
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Invisibility(
+              visible: !isLoading,
+              child: Center(
+                  child: Text(
+                "$_remainingRewards/3",
+                style: TextStyle(
+                  color: Theme.of(context) == ThemeData.dark()
+                      ? (Colors.grey[300] ?? Colors.white)
+                      : (Colors.grey[800] ?? Colors.black),
+                  fontSize: 20,
+                ),
+              )),
+            )
+          ],
+        ),
+        title: Text("Your Points: $userPoints"),
+        backgroundColor: Theme.of(context).colorScheme.background,
         actions: [
           IconButton(
             onPressed: logout,
@@ -306,8 +534,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         // onTapListener: (context) {
         //   _onTap(context);
         // },
-        onLongTapListener: (context) {
-          _onLongTap(context);
+        onLongTapListener: (mapContext) {
+          _onLongTap(mapContext, context);
         },
         onMapCreated: _onMapCreated,
         cameraOptions: CameraOptions(

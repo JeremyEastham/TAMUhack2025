@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:aalandmarks/helper/helper_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,12 +14,15 @@ class FirestoreDatabase {
   final CollectionReference coins =
       FirebaseFirestore.instance.collection('coins');
 
-  Future<String> spawnReward(String id, String? message, double latitude, double longitude) async {
-    print('spawnRecord got id: $id');
+  Future<String> spawnReward(
+      String id, String? message, double latitude, double longitude) async {
     try {
-      await FirebaseFirestore.instance.collection('coins').doc(getSubstringBeforeFirstDash(id)).set({
+      await FirebaseFirestore.instance
+          .collection('coins')
+          .doc(getSubstringBeforeFirstDash(id))
+          .set({
         'user-email': user!.email,
-        'msg': '',
+        'msg': message ?? '',
         'value': getRandomInt(minRewardvalue, maxRewardValue),
         'timestamp': Timestamp.now(),
         'latitude': latitude,
@@ -44,6 +49,26 @@ class FirestoreDatabase {
     } catch (e, stacktrace) {
       print('something went wrong spawning reward ${stacktrace}');
       return 'invalid';
+    }
+  }
+
+  Future<String> getMessage(String coinId) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      DocumentReference coinDoc = firestore
+          .collection('coins')
+          .doc(getSubstringBeforeFirstDash(coinId)); // get reward
+      DocumentSnapshot coinSnapshot = await coinDoc.get();
+      if (coinSnapshot.exists) {
+        String message = coinSnapshot.get('msg');
+        return message;
+      } else {
+        print('Post document with ID $coinId does not exist. ');
+        return '';
+      }
+    } catch (e, stacktrace) {
+      print('something went wrong getting message $stacktrace');
+      return '';
     }
   }
 
@@ -81,7 +106,10 @@ class FirestoreDatabase {
 
   String getAppUserEmail() {
     return user!.email ?? '';
+  }
 
+  Future<int> getAppUserPts() async {
+    return Random().nextInt(9999);
   }
 
   Stream<QuerySnapshot> getCoinsStream() {
@@ -93,11 +121,10 @@ class FirestoreDatabase {
     return coinsStream;
   }
 
-
   Future<void> printAllCoinsLocation() async {
     try {
-        final CollectionReference coins =
-      FirebaseFirestore.instance.collection('coins');
+      final CollectionReference coins =
+          FirebaseFirestore.instance.collection('coins');
       QuerySnapshot querySnapshot = await coins.get();
       for (var doc in querySnapshot.docs) {
         double latitude = doc.get('latitude');
@@ -108,5 +135,4 @@ class FirestoreDatabase {
       print('something went wrong retrieving coins locations $stacktrace');
     }
   }
-
 }
