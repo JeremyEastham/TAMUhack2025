@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -49,13 +50,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   MapboxMap? mapboxMap;
   Position _userPosition = Position(-96.33909152611203, 30.609);
   final FirestoreDatabase database = FirestoreDatabase();
+  late StreamSubscription<QuerySnapshot> databaseSubscrition;
   late Ticker _ticker;
   late ModelLayer modelLayer;
   late PointAnnotationManager pointAnnotationManager;
   late OnAnnotationClick onAnnotationClick;
 
+  final Map<String, PointAnnotation> annotationsMap = {};
+
   @override
   void dispose() {
+    stopUpdateListener();
     _ticker.dispose();
     super.dispose();
   }
@@ -64,8 +69,87 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     FirebaseAuth.instance.signOut();
   }
 
-  _onMapCreated(MapboxMap mapboxMap) async {
+  // listen to annotation updates real-time in the db
+  void startUpdateListener() {
+    print('Started listening to database updates');
+    final collectionRef = FirebaseFirestore.instance.collection('coins');
 
+    databaseSubscrition = collectionRef.snapshots().listen((querySnapshot) {
+      for (var change in querySnapshot.docChanges) {
+        final data = change.doc.data();
+        if (data == null) {
+          print('query data was null');
+          return;
+        }
+
+        final documentId = change.doc.id;
+        final latitude = data['latitude'];
+        final longitude = data['longitude'];
+        final userEmail = data['user-email'];
+        print('userEmail: $userEmail and type: ${change.type.toString()}');
+
+        // the current user is the one who updated the information so ignore the change
+        if (userEmail == database.getAppUserEmail()) {
+          print('the user did this change');
+          return;
+        }
+
+        if (change.type == DocumentChangeType.added) {
+          createAnnotationOnMap(longitude, latitude);
+          print('New document add detected');
+        } else if (change.type == DocumentChangeType.modified) {
+          print('Document modified. No action needed');
+        } else if (change.type == DocumentChangeType.removed) {
+          print('Document remove detected docId: ${documentId}');
+          annotationsMap.entries.forEach((entry) {
+            print('Key: ${entry.key}, Value: ${entry.value}');
+          });
+          if (annotationsMap[documentId] != null) {
+            // the annoation is on the map (as stored in our local map of them)
+            pointAnnotationManager.delete(annotationsMap[documentId]!);
+            annotationsMap.remove(documentId);
+            print('Document remove successfully handled');
+          }
+        }
+      }
+    });
+  }
+
+  // end listener to annotation updates in db
+  void stopUpdateListener() {
+    databaseSubscrition.cancel();
+    print('Stopped listening to db updates');
+  }
+
+  Future<String> createAnnotationOnMap(num longitude, num latitude) async {
+    //load asset
+    final ByteData bytes =
+        await rootBundle.load('assets/american-airlines.png');
+    final Uint8List imageData = bytes.buffer.asUint8List();
+
+    //make a point with the latitude and longitude
+    PointAnnotationOptions pao = PointAnnotationOptions(
+      geometry: Point(
+        coordinates: Position(longitude, latitude),
+      ),
+      image: imageData,
+      iconSize: 0.2,
+    );
+
+    // put annotation on the map
+    PointAnnotation pa = await pointAnnotationManager.create(pao);
+
+    print('attempt to add to map: ${pa.id}, val: $pa');
+
+    annotationsMap[getSubstringBeforeFirstDash(pa.id)] =
+        pa; // save a reference to the point annotation locally for possible deletion later
+    annotationsMap.entries.forEach((entry) {
+      print('Key: ${entry.key}, Value: ${entry.value}');
+    });
+    return pa.id;
+  }
+
+  _onMapCreated(MapboxMap mapboxMap) async {
     showDialog(
       context: context,
       builder: (context) => const Center(
@@ -78,8 +162,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     /// DEMO ONLY -- REMOVE IN PRODUCTION
     mapboxMap.logo.updateSettings(LogoSettings(enabled: false));
     mapboxMap.attribution.updateSettings(AttributionSettings(enabled: false));
-    /// DEMO ONLY -- REMOVE IN PRODUCTION
 
+    /// DEMO ONLY -- REMOVE IN PRODUCTION
 
     mapboxMap.setBounds(CameraBoundsOptions(
       maxZoom: 17,
@@ -107,17 +191,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         double latitude = doc.get('latitude');
         double longitude = doc.get('longitude');
         print('Latitude: $latitude, Longitude: $longitude');
-        PointAnnotationOptions pao = PointAnnotationOptions(
-          geometry: Point(
-            coordinates: Position(longitude,
-                latitude), //make a point with the latitude and longitude
-          ),
-          image: imageData,
-          iconSize: 0.2,
-        );
 
-        await pointAnnotationManager.create(pao); // put the point on the map
+        await createAnnotationOnMap(longitude, latitude);
       }
+
+      // all the annotations are on the map. Start listening to any changes to annotations in the database
+      startUpdateListener();
 
       Navigator.pop(context);
     } catch (e, stacktrace) {
@@ -180,27 +259,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // }
 
   _onLongTap(MapContentGestureContext context) async {
-    print('i got here lil bro');
-    final ByteData bytes =
-        await rootBundle.load('assets/american-airlines.png');
-    final Uint8List imageData = bytes.buffer.asUint8List();
-    PointAnnotationOptions pao = PointAnnotationOptions(
-      geometry: context.point,
-      image: imageData,
-      iconSize: 0.2,
-    );
-
     try {
-      print('i got here bro');
-      PointAnnotation pa =
-          await pointAnnotationManager.create(pao); // put annotation on the map
+      double latitude = context.point.coordinates.lat as double;
+      double longitude = context.point.coordinates.lng as double;
+      String pointId = await createAnnotationOnMap(longitude, latitude);
 
       //create annoation in database
-      String coinId = await database.spawnReward(
-          pa.id,
-          '',
-          context.point.coordinates.lat as double,
-          context.point.coordinates.lng as double);
+      String coinId =
+          await database.spawnReward(pointId, '', latitude, longitude);
 
       print('successfully created annotation');
     } catch (e, stacktrace) {

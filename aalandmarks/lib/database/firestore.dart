@@ -12,6 +12,7 @@ class FirestoreDatabase {
       FirebaseFirestore.instance.collection('coins');
 
   Future<String> spawnReward(String id, String? message, double latitude, double longitude) async {
+    print('spawnRecord got id: $id');
     try {
       await FirebaseFirestore.instance.collection('coins').doc(getSubstringBeforeFirstDash(id)).set({
         'user-email': user!.email,
@@ -75,6 +76,11 @@ class FirestoreDatabase {
     } catch (e, stacktrace) {
       print('something went wrong claiming reward $stacktrace');
     }
+  }
+
+  String getAppUserEmail() {
+    return user!.email ?? '';
+
   }
 
   Stream<QuerySnapshot> getCoinsStream() {
