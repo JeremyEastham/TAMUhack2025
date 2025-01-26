@@ -17,9 +17,10 @@ int getRandomInt(int min, int max) {
 }
 
 String getSubstringBeforeFirstDash(String input) {
-  int dashIndex = input.indexOf('-');
-  if (dashIndex == -1) {
-    return input; // No dash found, return the whole string
-  }
-  return input.substring(0, dashIndex);
+  // int dashIndex = input.indexOf('-');
+  // if (dashIndex == -1) {
+  //   return input; // No dash found, return the whole string
+  // }
+  // return input.substring(0, dashIndex);
+  return input;
 }

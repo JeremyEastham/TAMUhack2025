@@ -258,11 +258,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         } else if (change.type == DocumentChangeType.modified) {
           print('Document modified. No action needed');
         } else if (change.type == DocumentChangeType.removed) {
-          print('Document remove only detected so far');
+          print('Document remove only detected so far $documentId');
+
+          annotationsMap.forEach((key, value) {
+            print('Key: $key, Value: ${value.id}');
+          });
           if (annotationsMap[documentId] != null) {
             // the annoation is on the map (as stored in our local map of them)
+            print(
+                'this is the annotation id: ${annotationsMap[documentId]!.id}');
             pointAnnotationManager.delete(annotationsMap[documentId]!);
             annotationsMap.remove(documentId);
+            mapboxMap?.triggerRepaint(); // Ensure the map repaints
             // database.idConnectionsMap.remove(documentId);
             print('Document remove successfully handled');
           }
