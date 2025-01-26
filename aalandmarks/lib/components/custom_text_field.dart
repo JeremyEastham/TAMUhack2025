@@ -23,6 +23,7 @@ class CustomTextField extends StatelessWidget {
         hintText: hintText,
       ),
       obscureText: obscureText,
+      onTapOutside: (event) => FocusManager.instance.primaryFocus?.unfocus(),
     );
   }
 }
