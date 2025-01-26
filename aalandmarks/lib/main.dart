@@ -1,137 +1,85 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  MapboxOptions.setAccessToken('pk.eyJ1IjoicmFhZmF5NTkiLCJhIjoiY202Y250dG40MGFldjJxcG40cDVrYWh0cSJ9.FoXcn72rQkMAnuueczZUXQ');
-  CameraOptions camera = CameraOptions(
-    center: Point(coordinates: Position(-98.0, 39.5)),
-    zoom: 2,
-    bearing: 0,
-    pitch: 0);
-
-  // Run your application, passing your CameraOptions to the MapWidget
-  runApp(MaterialApp(home: MapWidget(
-    cameraOptions: camera,
-  )));
+  runApp(MaterialApp(
+    home: Scaffold(
+      appBar: AppBar(title: const Text('Mapbox Maps Example')),
+      body: ModelLayerWidget(),
+    ),
+  ));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ModelLayerWidget extends StatefulWidget {
+  ModelLayerWidget();
 
-  // This widget is the root of your application.
+  final _state = _ModelLayerState();
+  MapboxMap? getMapboxMap() => _state.mapboxMap;
+
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
+  State<StatefulWidget> createState() {
+    return _state;
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class _ModelLayerState extends State<ModelLayerWidget> {
+  MapboxMap? mapboxMap;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  var position = Position(24.9458, 60.17180);
+  var modelPosition = Position(24.94457012371287, 60.171958417023674);
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+    return MapWidget(
+        cameraOptions: CameraOptions(
+            center: Point(coordinates: position),
+            zoom: 18.5,
+            bearing: 98.82,
+            pitch: 85),
+        key: const ValueKey<String>('mapWidget'),
+        onMapCreated: _onMapCreated,
+        onStyleLoadedListener: _onStyleLoaded);
+  }
+
+  _onMapCreated(MapboxMap mapboxMap) async {
+    this.mapboxMap = mapboxMap;
+  }
+
+  _onStyleLoaded(StyleLoadedEventData data) async {
+    addModelLayer();
+  }
+
+  addModelLayer() async {
+    var value = Point(coordinates: modelPosition);
+    if (mapboxMap == null) {
+      throw Exception("MapboxMap is not ready yet");
+    }
+
+    final buggyModelId = "model-test-id";
+    final buggyModelUri = "asset://assets/stegosaurs.SStenops.glb";
+    await mapboxMap?.style.addStyleModel(buggyModelId, buggyModelUri);
+
+    final carModelId = "model-car-id";
+    final carModelUri = "asset://assets/stegosaurs.SStenops.glb";
+    await mapboxMap?.style.addStyleModel(carModelId, carModelUri);
+
+    await mapboxMap?.style
+        .addSource(GeoJsonSource(id: "sourceId", data: json.encode(value)));
+
+    var modelLayer = ModelLayer(id: "modelLayer-buggy", sourceId: "sourceId");
+    modelLayer.modelId = buggyModelId;
+    modelLayer.modelScale = [0.15, 0.15, 0.15];
+    modelLayer.modelRotation = [0, 0, 90];
+    modelLayer.modelType = ModelType.COMMON_3D;
+    mapboxMap?.style.addLayer(modelLayer);
+
+    var modelLayer1 = ModelLayer(id: "modelLayer-car", sourceId: "sourceId");
+    modelLayer1.modelId = carModelId;
+    modelLayer1.modelScale = [0.15, 0.15, 0.15];
+    modelLayer1.modelRotation = [0, 0, 90];
+    modelLayer1.modelType = ModelType.COMMON_3D;
+    mapboxMap?.style.addLayer(modelLayer1);
   }
 }
