@@ -9,16 +9,33 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:quickalert/quickalert.dart';
+import 'package:aalandmarks/components/invisibility.dart';
 
 class OnAnnotationClick extends OnPointAnnotationClickListener {
   PointAnnotationManager? pointAnnotationManager;
-  OnAnnotationClick(this.pointAnnotationManager);
+  BuildContext context;
+  OnAnnotationClick(this.pointAnnotationManager, {required this.context});
   final FirestoreDatabase database = FirestoreDatabase();
 
   @override
-  void onPointAnnotationClick(PointAnnotation annotation) {
+  void onPointAnnotationClick(PointAnnotation annotation) async {
     try {
-      database.claimReward(getSubstringBeforeFirstDash(annotation.id));
+      String message = await database.getMessage(annotation.id);
+      QuickAlert.show(
+        context: context,
+        type: QuickAlertType.success,
+        title: "You got a reward!",
+        text: message == '' ? 'No message' : '"$message"',
+        textColor: Theme.of(context) == ThemeData.dark()
+            ? (Colors.grey[300] ?? Colors.white)
+            : (Colors.grey[800] ?? Colors.black),
+        confirmBtnText: "Claim",
+        onConfirmBtnTap: () {
+          database.claimReward(getSubstringBeforeFirstDash(annotation.id));
+          Navigator.pop(context);
+        },
+      );
     } catch (e, stacktrace) {
       print('failed to delete annotation ${annotation.id} from database');
     }
@@ -26,6 +43,59 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
     pointAnnotationManager?.delete(annotation);
   }
 }
+
+// class Timer extends StatefulWidget {
+//   const Timer({super.key, required this.width});
+//   final double width;
+
+//   @override
+//   State<Timer> createState() => _TimerState();
+// }
+
+// class _TimerState extends State<Timer> with SingleTickerProviderStateMixin {
+//   late AnimationController _controller;
+//   late Animation<double> _animation;
+//   final double _cooldown = 0.0;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _controller = AnimationController(
+//       duration: const Duration(seconds: 1),
+//       vsync: this,
+//     )..forward();
+
+//     _animation = Tween(begin: 0.0, end: _cooldown)
+//         .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+//   }
+
+//   @override
+//   void dispose() {
+//     super.dispose();
+//   }
+
+//   void animateTimer() {
+//     _controller.reset();
+//     _animation = Tween(begin: 0.0, end: _cooldown)
+//         .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+//     _controller.forward();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return AnimatedBuilder(animation: _controller, builder: (context, _){
+//       return SizedBox(
+//         width: widget.width,
+//         height: widget.width,
+//         child: LinearProgressIndicator(
+//           value: _animation.value,
+//           backgroundColor: Colors.grey[300],
+//           valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[800] ?? Colors.black),
+//         ),
+//       )
+//     });
+//   }
+// }
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key, required this.title});
@@ -53,10 +123,35 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   late ModelLayer modelLayer;
   late PointAnnotationManager pointAnnotationManager;
   late OnAnnotationClick onAnnotationClick;
+  bool isLoading = false;
+  double secondsRemaining = 0;
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 30),
+      vsync: this,
+    )..forward();
+
+    _animation = Tween(begin: 0.0, end: 30.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+  }
+
+  void animateGauge() {
+    _controller.reset();
+    _animation = Tween(begin: 0.0, end: 30.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+    _controller.forward();
+  }
 
   @override
   void dispose() {
     _ticker.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -64,22 +159,29 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     FirebaseAuth.instance.signOut();
   }
 
-  _onMapCreated(MapboxMap mapboxMap) async {
+  void startLoading() {
+    setState(() {
+      isLoading = true;
+      secondsRemaining = 30;
+    });
+  }
 
+  _onMapCreated(MapboxMap mapboxMap) async {
     showDialog(
-      context: context,
+      context: this.context,
       builder: (context) => const Center(
         child: CircularProgressIndicator(),
       ),
     );
     //setting up the map
     this.mapboxMap = mapboxMap;
+    mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
 
     /// DEMO ONLY -- REMOVE IN PRODUCTION
     mapboxMap.logo.updateSettings(LogoSettings(enabled: false));
     mapboxMap.attribution.updateSettings(AttributionSettings(enabled: false));
-    /// DEMO ONLY -- REMOVE IN PRODUCTION
 
+    /// DEMO ONLY -- REMOVE IN PRODUCTION
 
     mapboxMap.setBounds(CameraBoundsOptions(
       maxZoom: 17,
@@ -88,7 +190,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     mapboxMap.gestures.updateSettings(GesturesSettings(scrollEnabled: false));
     pointAnnotationManager =
         await mapboxMap.annotations.createPointAnnotationManager();
-    onAnnotationClick = OnAnnotationClick(pointAnnotationManager);
+    onAnnotationClick =
+        OnAnnotationClick(pointAnnotationManager, context: context);
     pointAnnotationManager.addOnPointAnnotationClickListener(onAnnotationClick);
 
     // populate database annotations on the map
@@ -179,36 +282,64 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   //       "${context.point.coordinates.lng}");
   // }
 
-  _onLongTap(MapContentGestureContext context) async {
-    print('i got here lil bro');
+  _onLongTap(MapContentGestureContext mapContext, BuildContext context) async {
     final ByteData bytes =
         await rootBundle.load('assets/american-airlines.png');
     final Uint8List imageData = bytes.buffer.asUint8List();
     PointAnnotationOptions pao = PointAnnotationOptions(
-      geometry: context.point,
+      geometry: mapContext.point,
       image: imageData,
       iconSize: 0.2,
     );
+    String? message;
+    QuickAlert.show(
+      context: context,
+      showCancelBtn: true,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      width: MediaQuery.of(context).size.width * 0.5,
+      type: QuickAlertType.custom,
+      barrierDismissible: false,
+      confirmBtnText: "Post",
+      cancelBtnText: "Cancel",
+      widget: TextFormField(
+        decoration: InputDecoration(
+            hintText: "Enter optional message",
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            fillColor: Color.fromARGB(255, 166, 166, 166),
+            prefixIcon: Icon(Icons.edit)),
+        autocorrect: true,
+        onChanged: (value) => message = value,
+      ),
+      title: "Add a message to your reward",
+      onConfirmBtnTap: () async {
+        Navigator.pop(context);
+        try {
+          print('i got here bro');
+          PointAnnotation pa = await pointAnnotationManager
+              .create(pao); // put annotation on the map
+          print("Message is $message");
+          //create annoation in database
+          String coinId = await database.spawnReward(
+              pa.id,
+              message,
+              mapContext.point.coordinates.lat as double,
+              mapContext.point.coordinates.lng as double);
 
-    try {
-      print('i got here bro');
-      PointAnnotation pa =
-          await pointAnnotationManager.create(pao); // put annotation on the map
+          print('successfully created annotation');
+        } catch (e, stacktrace) {
+          print(
+              'something went wrong creating annotation in database $stacktrace');
+        }
+        startLoading();
+      },
+      onCancelBtnTap: () {
+        Navigator.pop(context);
+        return;
+      },
+    );
 
-      //create annoation in database
-      String coinId = await database.spawnReward(
-          pa.id,
-          '',
-          context.point.coordinates.lat as double,
-          context.point.coordinates.lng as double);
-
-      print('successfully created annotation');
-    } catch (e, stacktrace) {
-      print('something went wrong creating annotation in database $stacktrace');
-    }
-
-    print("ADDED ANNOTATION on the map at ${context.point.coordinates.lat}, "
-        "${context.point.coordinates.lng}");
+    print("ADDED ANNOTATION on the map at ${mapContext.point.coordinates.lat}, "
+        "${mapContext.point.coordinates.lng}");
   }
 
   @override
@@ -228,8 +359,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         // onTapListener: (context) {
         //   _onTap(context);
         // },
-        onLongTapListener: (context) {
-          _onLongTap(context);
+        onLongTapListener: (mapContext) {
+          _onLongTap(mapContext, context);
         },
         onMapCreated: _onMapCreated,
         cameraOptions: CameraOptions(
