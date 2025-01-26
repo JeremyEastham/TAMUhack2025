@@ -52,12 +52,12 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
             ? (Colors.grey[300] ?? Colors.white)
             : (Colors.grey[800] ?? Colors.black),
         confirmBtnText: "Claim",
-        onConfirmBtnTap: () {
+        onConfirmBtnTap: () async {
           print('claim 1: ${getSubstringBeforeFirstDash(annotation.id)}');
           print(
               'claim 2: ${FirestoreDatabase.idConnectionsMap[annotation.id]}');
-          database.claimReward(getSubstringBeforeFirstDash(annotation.id));
-          database
+          await database.claimReward(getSubstringBeforeFirstDash(annotation.id));
+          await database
               .claimReward(FirestoreDatabase.idConnectionsMap[annotation.id]!);
           FirestoreDatabase.idConnectionsMap.remove(annotation.id);
           updatePoints();
@@ -456,6 +456,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         onChanged: (value) => message = value,
       ),
       title: "Add a message to your reward",
+      titleColor: Theme.of(context).colorScheme.onTertiaryFixedVariant,
       onConfirmBtnTap: () async {
         Navigator.pop(context);
         try {
