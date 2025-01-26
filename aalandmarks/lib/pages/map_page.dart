@@ -25,7 +25,8 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
   void onPointAnnotationClick(PointAnnotation annotation) async {
     try {
       String message = await database.getMessage(annotation.id);
-      if (await database.getCoinEmail(getSubstringBeforeFirstDash(annotation.id)) ==
+      if (await database
+              .getCoinEmail(getSubstringBeforeFirstDash(annotation.id)) ==
           database.getAppUserEmail()) {
         print("claimed own reward");
         QuickAlert.show(
@@ -160,8 +161,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   double secondsRemaining = 0;
   late AnimationController _controller;
   late Animation<double> _animation;
-  int _remainingRewards = 30;
-  double cooldownTime = 5;
+  int _remainingRewards = 3;
+  double cooldownTime = 30;
   int? userPoints;
 
   @override
