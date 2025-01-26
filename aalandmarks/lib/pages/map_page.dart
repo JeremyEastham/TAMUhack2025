@@ -19,12 +19,22 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
   @override
   void onPointAnnotationClick(PointAnnotation annotation) {
     try {
+      print('claim 1: ${getSubstringBeforeFirstDash(annotation.id)}');
+      print('claim 2: ${FirestoreDatabase.idConnectionsMap[annotation.id]}');
       database.claimReward(getSubstringBeforeFirstDash(annotation.id));
+      database.claimReward(FirestoreDatabase.idConnectionsMap[annotation.id]!);
+      FirestoreDatabase.idConnectionsMap.remove(annotation.id);
     } catch (e, stacktrace) {
       print('failed to delete annotation ${annotation.id} from database');
     }
 
-    pointAnnotationManager?.delete(annotation);
+
+    try {
+      pointAnnotationManager?.delete(annotation);
+    } catch (e, stacktrace)  {
+      print('error happened trying to delete annotation');
+    }
+    
   }
 }
 
@@ -86,28 +96,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         final latitude = data['latitude'];
         final longitude = data['longitude'];
         final userEmail = data['user-email'];
-        print('userEmail: $userEmail and type: ${change.type.toString()}');
 
         // the current user is the one who updated the information so ignore the change
         if (userEmail == database.getAppUserEmail()) {
-          print('the user did this change');
           return;
         }
 
         if (change.type == DocumentChangeType.added) {
-          createAnnotationOnMap(longitude, latitude);
+          createAnnotationOnMap(longitude, latitude, existingId: documentId);
           print('New document add detected');
         } else if (change.type == DocumentChangeType.modified) {
           print('Document modified. No action needed');
         } else if (change.type == DocumentChangeType.removed) {
-          print('Document remove detected docId: ${documentId}');
-          annotationsMap.entries.forEach((entry) {
-            print('Key: ${entry.key}, Value: ${entry.value}');
-          });
           if (annotationsMap[documentId] != null) {
             // the annoation is on the map (as stored in our local map of them)
             pointAnnotationManager.delete(annotationsMap[documentId]!);
             annotationsMap.remove(documentId);
+            // database.idConnectionsMap.remove(documentId);
             print('Document remove successfully handled');
           }
         }
@@ -121,7 +126,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     print('Stopped listening to db updates');
   }
 
-  Future<String> createAnnotationOnMap(num longitude, num latitude) async {
+  Future<String> createAnnotationOnMap(num longitude, num latitude, {String? existingId}) async {
     //load asset
     final ByteData bytes =
         await rootBundle.load('assets/american-airlines.png');
@@ -138,14 +143,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     // put annotation on the map
     PointAnnotation pa = await pointAnnotationManager.create(pao);
+    String annotationsEntry = existingId ?? pa.id;
 
-    print('attempt to add to map: ${pa.id}, val: $pa');
-
-    annotationsMap[getSubstringBeforeFirstDash(pa.id)] =
-        pa; // save a reference to the point annotation locally for possible deletion later
-    annotationsMap.entries.forEach((entry) {
-      print('Key: ${entry.key}, Value: ${entry.value}');
+    if(existingId != null) {
+      FirestoreDatabase.idConnectionsMap[pa.id] = getSubstringBeforeFirstDash(annotationsEntry);
+    }
+    print('IDCONNECTIONSMAP: ');
+    FirestoreDatabase.idConnectionsMap.forEach((key, value) {
+      print('Key: $key, Value: $value');
     });
+    print('');
+
+    annotationsMap[getSubstringBeforeFirstDash(annotationsEntry)] =
+        pa; // save a reference to the point annotation locally for possible deletion later
+
+
     return pa.id;
   }
 
@@ -192,7 +204,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         double longitude = doc.get('longitude');
         print('Latitude: $latitude, Longitude: $longitude');
 
-        await createAnnotationOnMap(longitude, latitude);
+        await createAnnotationOnMap(longitude, latitude, existingId: doc.id);
       }
 
       // all the annotations are on the map. Start listening to any changes to annotations in the database

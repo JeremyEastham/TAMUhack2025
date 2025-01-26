@@ -4,9 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class FirestoreDatabase {
   User? user = FirebaseAuth.instance.currentUser;
+  static final Map<String, String> idConnectionsMap = {};
 
-  final int maxRewardValue = 500;
-  final int minRewardvalue = 20;
+  final int maxRewardValue = 200;
+  final int minRewardvalue = 50;
 
   final CollectionReference coins =
       FirebaseFirestore.instance.collection('coins');
