@@ -25,6 +25,24 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
   void onPointAnnotationClick(PointAnnotation annotation) async {
     try {
       String message = await database.getMessage(annotation.id);
+      if (await database.getCoinEmail(getSubstringBeforeFirstDash(annotation.id)) ==
+          database.getAppUserEmail()) {
+        print("claimed own reward");
+        QuickAlert.show(
+          context: context,
+          type: QuickAlertType.error,
+          title: "You can't claim your own reward",
+          text: "Try being more social",
+          textColor: Theme.of(context) == ThemeData.dark()
+              ? (Colors.grey[300] ?? Colors.white)
+              : (Colors.grey[800] ?? Colors.black),
+          confirmBtnText: "Ok",
+          onConfirmBtnTap: () {
+            Navigator.pop(context);
+          },
+        );
+        return;
+      }
       QuickAlert.show(
         context: context,
         type: QuickAlertType.success,
@@ -35,11 +53,13 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
             : (Colors.grey[800] ?? Colors.black),
         confirmBtnText: "Claim",
         onConfirmBtnTap: () {
-      print('claim 1: ${getSubstringBeforeFirstDash(annotation.id)}');
-      print('claim 2: ${FirestoreDatabase.idConnectionsMap[annotation.id]}');
-      database.claimReward(getSubstringBeforeFirstDash(annotation.id));
-      database.claimReward(FirestoreDatabase.idConnectionsMap[annotation.id]!);
-      FirestoreDatabase.idConnectionsMap.remove(annotation.id);
+          print('claim 1: ${getSubstringBeforeFirstDash(annotation.id)}');
+          print(
+              'claim 2: ${FirestoreDatabase.idConnectionsMap[annotation.id]}');
+          database.claimReward(getSubstringBeforeFirstDash(annotation.id));
+          database
+              .claimReward(FirestoreDatabase.idConnectionsMap[annotation.id]!);
+          FirestoreDatabase.idConnectionsMap.remove(annotation.id);
           updatePoints();
           Navigator.pop(context);
         },
@@ -48,13 +68,11 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
       print('failed to delete annotation ${annotation.id} from database');
     }
 
-
     try {
       pointAnnotationManager?.delete(annotation);
-    } catch (e, stacktrace)  {
+    } catch (e, stacktrace) {
       print('error happened trying to delete annotation');
     }
-    
   }
 }
 
@@ -259,7 +277,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     print('Stopped listening to db updates');
   }
 
-  Future<String> createAnnotationOnMap(num longitude, num latitude, {String? existingId}) async {
+  Future<String> createAnnotationOnMap(num longitude, num latitude,
+      {String? existingId}) async {
     //load asset
     final ByteData bytes =
         await rootBundle.load('assets/american-airlines.png');
@@ -278,8 +297,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     PointAnnotation pa = await pointAnnotationManager.create(pao);
     String annotationsEntry = existingId ?? pa.id;
 
-    if(existingId != null) {
-      FirestoreDatabase.idConnectionsMap[pa.id] = getSubstringBeforeFirstDash(annotationsEntry);
+    if (existingId != null) {
+      FirestoreDatabase.idConnectionsMap[pa.id] =
+          getSubstringBeforeFirstDash(annotationsEntry);
     }
     print('IDCONNECTIONSMAP: ');
     FirestoreDatabase.idConnectionsMap.forEach((key, value) {
@@ -289,7 +309,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     annotationsMap[getSubstringBeforeFirstDash(annotationsEntry)] =
         pa; // save a reference to the point annotation locally for possible deletion later
-
 
     return pa.id;
   }
