@@ -142,9 +142,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   double secondsRemaining = 0;
   late AnimationController _controller;
   late Animation<double> _animation;
-  int _remainingRewards = 3;
+  int _remainingRewards = 30;
   double cooldownTime = 5;
-  late int userPoints;
+  int? userPoints;
 
   @override
   void initState() {
@@ -466,6 +466,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     print("ADDED ANNOTATION on the map at ${mapContext.point.coordinates.lat}, "
         "${mapContext.point.coordinates.lng}");
+    // pointanimation jonathan = manager.create(pao(data))
+    // manager.update(jonathan)
   }
 
   @override
@@ -521,7 +523,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             )
           ],
         ),
-        title: Text("Your Points: $userPoints"),
+        title: Text("Your Points: ${userPoints ?? 0}"),
         backgroundColor: Theme.of(context).colorScheme.background,
         actions: [
           IconButton(
