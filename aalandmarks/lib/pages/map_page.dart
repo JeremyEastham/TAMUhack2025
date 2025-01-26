@@ -24,9 +24,9 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
   @override
   void onPointAnnotationClick(PointAnnotation annotation) async {
     try {
-      String message = await database.getMessage(annotation.id);
+      String message = await database.getMessage(FirestoreDatabase.idConnectionsMap[annotation.id]!);
       if (await database
-              .getCoinEmail(getSubstringBeforeFirstDash(annotation.id)) ==
+              .getCoinEmail(FirestoreDatabase.idConnectionsMap[annotation.id]!) ==
           database.getAppUserEmail()) {
         print("claimed own reward");
         QuickAlert.show(
@@ -44,6 +44,10 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
         );
         return;
       }
+
+      if (Navigator.canPop(context)) {
+        return;
+      }
       QuickAlert.show(
         context: context,
         type: QuickAlertType.success,
@@ -55,11 +59,8 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
         confirmBtnText: "Claim",
         onConfirmBtnTap: () async {
           Navigator.pop(context);
-          print('claim 1: ${getSubstringBeforeFirstDash(annotation.id)}');
           print(
               'claim 2: ${FirestoreDatabase.idConnectionsMap[annotation.id]}');
-          await database
-              .claimReward(getSubstringBeforeFirstDash(annotation.id));
           await database
               .claimReward(FirestoreDatabase.idConnectionsMap[annotation.id]!);
           FirestoreDatabase.idConnectionsMap.remove(annotation.id);
