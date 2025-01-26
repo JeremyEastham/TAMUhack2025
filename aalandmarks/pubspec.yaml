@@ -63,6 +63,7 @@ flutter:
     - assets/low_poly_plane.glb
     - assets/low_poly_plane.gltf
     - assets/stegosaurs_SStenops.glb
+    - assets/american-airlines.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

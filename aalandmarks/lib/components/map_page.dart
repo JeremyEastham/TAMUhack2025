@@ -1,8 +1,19 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
+
+class OnAnnotationClick extends OnPointAnnotationClickListener {
+  PointAnnotationManager? pointAnnotationManager;
+  OnAnnotationClick(this.pointAnnotationManager);
+  @override
+  void onPointAnnotationClick(PointAnnotation annotation) {
+    pointAnnotationManager?.delete(annotation);
+  }
+}
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key, required this.title});
@@ -27,6 +38,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Position _userPosition = Position(-96.33909152611203, 30.609);
   late Ticker _ticker;
   late ModelLayer modelLayer;
+  late PointAnnotationManager pointAnnotationManager;
+  late OnAnnotationClick onAnnotationClick;
 
   @override
   void dispose() {
@@ -34,13 +47,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  _onMapCreated(MapboxMap mapboxMap) {
+  _onMapCreated(MapboxMap mapboxMap) async {
     this.mapboxMap = mapboxMap;
     mapboxMap.setBounds(CameraBoundsOptions(
       maxZoom: 17,
       minZoom: 16,
     ));
     mapboxMap.gestures.updateSettings(GesturesSettings(scrollEnabled: false));
+    pointAnnotationManager =
+        await mapboxMap.annotations.createPointAnnotationManager();
+    onAnnotationClick = OnAnnotationClick(pointAnnotationManager);
+    pointAnnotationManager.addOnPointAnnotationClickListener(onAnnotationClick);
   }
 
   _setZoom(double zoom) {
@@ -54,8 +71,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       //move the model and camera
       _userPosition =
           Position(_userPosition.lng + 0.00001, _userPosition.lat + 0.00001);
-      mapboxMap!.setCamera(
-          CameraOptions(center: Point(coordinates: _userPosition), zoom: 16));
+      mapboxMap!
+          .setCamera(CameraOptions(center: Point(coordinates: _userPosition)));
       mapboxMap!.style.setStyleSourceProperty(
           "sourceId", "data", json.encode(Point(coordinates: _userPosition)));
     });
@@ -95,6 +112,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         "${context.point.coordinates.lng}");
   }
 
+  _onLongTap(MapContentGestureContext context) async {
+    final ByteData bytes =
+        await rootBundle.load('assets/american-airlines.png');
+    final Uint8List imageData = bytes.buffer.asUint8List();
+    PointAnnotationOptions pao = PointAnnotationOptions(
+      geometry: context.point,
+      image: imageData,
+      iconSize: 0.2,
+    );
+    PointAnnotation pa = await pointAnnotationManager.create(pao);
+    pa.id = "Jeremy";
+    print("Long tapped on the map at ${context.point.coordinates.lat}, "
+        "${context.point.coordinates.lng}");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,6 +136,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       body: MapWidget(
         onTapListener: (context) {
           _onTap(context);
+        },
+        onLongTapListener: (context) {
+          _onLongTap(context);
         },
         onMapCreated: _onMapCreated,
         cameraOptions: CameraOptions(
