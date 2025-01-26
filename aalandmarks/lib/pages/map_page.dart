@@ -65,6 +65,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   _onMapCreated(MapboxMap mapboxMap) async {
+
+    showDialog(
+      context: context,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
     //setting up the map
     this.mapboxMap = mapboxMap;
 
@@ -111,7 +118,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
         await pointAnnotationManager.create(pao); // put the point on the map
       }
+
+      Navigator.pop(context);
     } catch (e, stacktrace) {
+      Navigator.pop(context);
       print(
           'something went wrong retrieving coins locations from database $stacktrace');
     }
@@ -164,12 +174,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _ticker.start();
   }
 
-  _onTap(MapContentGestureContext context) {
-    print("Tapped on the map at ${context.point.coordinates.lat}, "
-        "${context.point.coordinates.lng}");
-  }
+  // _onTap(MapContentGestureContext context) {
+  //   print("Tapped on the map at ${context.point.coordinates.lat}, "
+  //       "${context.point.coordinates.lng}");
+  // }
 
   _onLongTap(MapContentGestureContext context) async {
+    print('i got here lil bro');
     final ByteData bytes =
         await rootBundle.load('assets/american-airlines.png');
     final Uint8List imageData = bytes.buffer.asUint8List();
@@ -180,6 +191,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
 
     try {
+      print('i got here bro');
       PointAnnotation pa =
           await pointAnnotationManager.create(pao); // put annotation on the map
 
@@ -195,7 +207,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       print('something went wrong creating annotation in database $stacktrace');
     }
 
-    print("Long tapped on the map at ${context.point.coordinates.lat}, "
+    print("ADDED ANNOTATION on the map at ${context.point.coordinates.lat}, "
         "${context.point.coordinates.lng}");
   }
 
@@ -213,9 +225,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         ],
       ),
       body: MapWidget(
-        onTapListener: (context) {
-          _onTap(context);
-        },
+        // onTapListener: (context) {
+        //   _onTap(context);
+        // },
         onLongTapListener: (context) {
           _onLongTap(context);
         },
