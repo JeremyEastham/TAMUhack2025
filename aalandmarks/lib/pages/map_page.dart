@@ -24,9 +24,10 @@ class OnAnnotationClick extends OnPointAnnotationClickListener {
   @override
   void onPointAnnotationClick(PointAnnotation annotation) async {
     try {
-      String message = await database.getMessage(FirestoreDatabase.idConnectionsMap[annotation.id]!);
-      if (await database
-              .getCoinEmail(FirestoreDatabase.idConnectionsMap[annotation.id]!) ==
+      String message = await database
+          .getMessage(FirestoreDatabase.idConnectionsMap[annotation.id]!);
+      if (await database.getCoinEmail(
+              FirestoreDatabase.idConnectionsMap[annotation.id]!) ==
           database.getAppUserEmail()) {
         print("claimed own reward");
         QuickAlert.show(
@@ -251,17 +252,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         final longitude = data['longitude'];
         final userEmail = data['user-email'];
 
-        // the current user is the one who updated the information so ignore the change
-        if (userEmail == database.getAppUserEmail()) {
-          return;
-        }
-
         if (change.type == DocumentChangeType.added) {
           createAnnotationOnMap(longitude, latitude, existingId: documentId);
           print('New document add detected');
         } else if (change.type == DocumentChangeType.modified) {
           print('Document modified. No action needed');
         } else if (change.type == DocumentChangeType.removed) {
+          print('Document remove only detected so far');
           if (annotationsMap[documentId] != null) {
             // the annoation is on the map (as stored in our local map of them)
             pointAnnotationManager.delete(annotationsMap[documentId]!);
