@@ -153,7 +153,7 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   MapboxMap? mapboxMap;
-  Position _userPosition = Position(-96.33909152611203, 30.609);
+  Position _userPosition = Position(2.293158, 48.857880);
   final FirestoreDatabase database = FirestoreDatabase();
   late StreamSubscription<QuerySnapshot> databaseSubscrition;
   late Ticker _ticker;
@@ -319,7 +319,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       FirestoreDatabase.idConnectionsMap[pa.id] =
           getSubstringBeforeFirstDash(annotationsEntry);
     }
-    print('IDCONNECTIONSMAP: ');
     FirestoreDatabase.idConnectionsMap.forEach((key, value) {
       print('Key: $key, Value: $value');
     });

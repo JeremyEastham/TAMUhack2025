@@ -92,7 +92,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 25),
                     Text(
-                      "AA LANDMARKS",
+                      "JourneyPins",
                       style: TextStyle(fontSize: 20),
                     ),
                     const SizedBox(height: 50),
